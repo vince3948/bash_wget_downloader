@@ -7,16 +7,14 @@
 set -u
 list="";dest=""
 red="\e[1;31m";green="\e[1;32m";blue="\e[1;34m";off="\e[0m"
-wget_params="-cN --no-use-server-timestamps"
-quiet=false;
-clean=false;
+ask=false;keep=false;limit=false;speed="";
 
 # fonctions
 show_help() {
     echo -e "\n ${blue}Bash Wget Downloader${off} usage : \n"
-    echo -e "./$(basename "$0") -l|-f [links_file] -d [dir_destination] [-q (quiet)] [-c (clean list)] \n"
-    echo -e "Ex : ./$(basename "$0") -l link.txt -d /data/download/"
-    echo -e "\nNB : links_file will be create with vim if not exist\n"
+    echo -e "./$(basename "$0") -d [dir_destination] [-f [links_file]] [-a (ask confirmation)] [-k (keep list)] [-l (limit speed to 15MB/s)] \n"
+    echo -e "Ex : ./$(basename "$0") -d /data/download/"
+    echo -e "\nNB : links_file will be create if not exist\n"
     exit
 }
 
@@ -26,21 +24,25 @@ test_dest() {
 }
 
 test_list() {
-    if [ -z $list ] ;then echo -e "\n...${red}No param for list !${off} ...\n" && show_help;fi
-    if [ ! -f "$list" ];then 
+    if [ -z $list ] ;then echo -e "\n...${red}No param for list !${off} ... use 'list'" && list="/tmp/list" ;fi
+    if [ ! -f "$list" ] || [ "$keep" == false ];then
         echo -e "\n Create $list ...!"
-        vim $list 
+	> $list
     fi
+    vim $list
+    # delete empty lines
+    sed -i '/^$/d' $list
     nb_lines=$(wc -l < $list)
 }
 
 # get param
-while getopts 'l:f:d:qrch' opts; do
+while getopts 'f:d:aklh' opts; do
    case ${opts} in
-      l|f) list="${OPTARG}" ;;
+      f) list="${OPTARG}" ;;
       d) dest="${OPTARG}" ;;
-      q) quiet=true ;;
-      c) clean=true ;;
+      a) ask=true ;;
+      k) keep=true ;;
+      l) limit=true ;;
       h) show_help ;;
    esac
 done
@@ -53,23 +55,43 @@ test_list
 echo -e "\nDest : $dest"
 echo -e "\nList : $list ($nb_lines lines)"
 
-if [ $quiet == false ];then echo -e "" && read -ep "....Press enter to continue....";fi
+if [ $ask == true ];then echo -e "" && read -ep "....Press enter to continue....";fi
 
 
 # download !
 i=1
-cd $dest
-for f in $(cat $list);
+mylist=$(uniq $list)
+
+echo -e "\n....Liste :"
+echo -e "${blue}"
+for f in $mylist;
 do
-           echo -e "\n${blue}Link${off} $i of $nb_lines : $f \n"
-           wget $wget_params $f
-           ((i++))
+ echo -e "$f"
 done
+echo -e "${off}"
+
+if [ $limit == true ];then
+    speed="--limit-rate=15m";
+    echo -e "\n${blue}Limit speed to 15 MB/s ;)${off} ..."
+else
+    echo -e "\n${green}No speed limit !${off} ..."
+fi
 
 # clean list file
-if [ $clean == true ];then
-    echo -en "\n${blue}Clean${off} list : "
+if [ $keep == false ];then
+    echo -e "\n${blue}Clean${off} list : "
     rm -vf $list
-    echo -e ""
 fi
+
+download_params="wget -c $speed --no-use-server-timestamps --show-progress --progress=bar:force"
+
+cd $dest
+for f in $mylist;
+do
+	   if [ $i -gt 1 ];then echo "sleep 2s" && sleep 2;fi
+           echo -e "\n${blue}Link${off} $i of $nb_lines : $f \n"
+	   #echo "$download_params "$f""
+           $download_params "$f"
+           ((i++))
+done
 

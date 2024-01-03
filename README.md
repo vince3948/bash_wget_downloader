@@ -1,12 +1,17 @@
 # Bash Wget Downloader
 
-Simple bash wget downloader (bwd)
-
-Bash Wget Downloader usage :
+Simple Bash Wget Downloader (BWD)
 
 ```
-./download.sh -l|-f [links_file] -d [dir_destination] [-q (quiet)] [-c (clean list)]
-Ex : ./download.sh -l link.txt -d /data/download/
+ Bash Wget Downloader usage :
 
-NB : links_file will be create with vim if not exist
+./download.sh -d [dir_destination] \
+	      [-f [links_file]] \
+	      [-a (ask confirmation)] \
+              [-k (keep list)] \
+              [-l (limit speed to 15MB/s)]
+
+Ex : ./download.sh -d /data/download/
+
+NB : links_file will be create if not exist
 ```
